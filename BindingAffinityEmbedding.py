@@ -91,7 +91,6 @@ if __name__ == '__main__':
     parser.add_argument("--skip_gram", type=int, default=1, help="to enable skip-gram algorithm")
     parser.add_argument("--window", type=int, default=25, help="set window size")
     parser.add_argument("--min_count", type=int, default=1, help="neglect those words whose frequency is less than this threshold")
-    parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("-s", "--size", type=int, default=100, help="embedding dimension")
     parser.add_argument("-v", "--vectors", default="./data/3-gram-vectors.txt", help="path to the text file where the vectors are to be stored")
     parser.add_argument("-m", "--model_weights", default="./data/3-gram-model-weights.mdl", help="path to the binary file where the model weights are to be stored")
@@ -102,8 +101,7 @@ if __name__ == '__main__':
                     out=args.output_corpus, 
                     sg=args.skip_gram, 
                     window=args.window, 
-                    min_count=args.min_count, 
-                    workers=args.workers,
+                    min_count=args.min_count,
                     col=args.col)
     # check if args.vectors exist
     if(not os.path.isfile(args.vectors)):
