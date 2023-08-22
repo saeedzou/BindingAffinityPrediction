@@ -101,7 +101,7 @@ def tsne_plot(model, n_components=2, random_state=42):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train ProtVec using gensim (Word2Vec)")
-    parser.add_argument("-f", "--corpus_fname", default="./data/binding_affinity_data.csv", help="path to the input csv file")
+    parser.add_argument("-f", "--corpus_fname", default="./data/train.csv", help="path to the input csv file")
     parser.add_argument("-c", "--col", default="MHC_sequence", help="column name of the sequences")
     parser.add_argument("-o", "--output_corpus", default="./data/output_corpus_3.txt", help="path to the output corpus")
     parser.add_argument("-n", "--ngram_length", type=int, default=3, help="ngram length")
