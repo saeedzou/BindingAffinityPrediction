@@ -13,10 +13,10 @@ def split_ngrams(seq, n):
     return [list("".join(ngram) for ngram in zip(*[iter(seq[i:])]*n)) for i in range(n)]
 
 
-def generate_corpusfile(corpus_fname, n, out):
+def generate_corpusfile(corpus_fname, n, out, col='MHC_sequence'):
     df = pd.read_csv(corpus_fname, index_col=0)
     with open(out, "w") as f:
-        for r in tqdm(df.MHC_sequence):
+        for r in tqdm(df[col]):
             ngram_patterns = split_ngrams(r, n)
             for ngram_pattern in ngram_patterns:
                 f.write(" ".join(ngram_pattern) + "\n")	# Take all the sequences and split them into kmers
