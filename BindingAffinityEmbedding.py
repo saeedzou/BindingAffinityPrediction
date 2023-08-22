@@ -65,8 +65,10 @@ def tsne_plot(model, n_components=2, random_state=42):
     tokens.append(model.wv[word])
     labels.append(word)
 
-  tsne_model = TSNE(n_components=n_components, random_state=random_state)
-  new_values = tsne_model.fit_transform(np.array(tokens))
+  tokens = np.array(tokens)
+  perplexity = 15 if tokens.shape[0]<30 else 30
+  tsne_model = TSNE(n_components=n_components, random_state=random_state, perplexity=perplexity)
+  new_values = tsne_model.fit_transform(tokens)
 
   x = []
   y = []
@@ -74,7 +76,7 @@ def tsne_plot(model, n_components=2, random_state=42):
     x.append(value[0])
     y.append(value[1])
 
-  plt.figure(figsize=(16, 16))
+  plt.figure(figsize=(10, 10))
   for i in range(len(x)):
     plt.scatter(x[i], y[i])
     plt.annotate(labels[i], xy=(x[i], y[i]), xytext=(5, 2), textcoords="offset points", ha="right", va="bottom")
