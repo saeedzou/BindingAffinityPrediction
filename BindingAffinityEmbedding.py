@@ -44,7 +44,12 @@ class ProtVec(word2vec.Word2Vec):
     def word2vec_init(self, vectors_txt, model_weights):
         print("-- Initializing Word2Vec model --")
         print("-- Training the model --")
-        self.m = word2vec.Word2Vec(corpus_file=self.out, vector_size=self.size, sg=self.sg, window=self.window, min_count=self.vocab)
+        with tqdm(total=self.m.corpus_total_words) as pbar:
+            self.m = word2vec.Word2Vec(corpus_file=self.out, 
+                                       vector_size=self.size, 
+                                       sg=self.sg, window=self.window, 
+                                       min_count=self.vocab, 
+                                       callbacks=[lambda count: pbar.update(count)])
         self.m.wv.save_word2vec_format(vectors_txt)
         self.m.save(model_weights)
         print("-- Saving Model Weights to : %s " % (vectors_txt))
