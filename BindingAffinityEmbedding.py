@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from gensim.models import word2vec
+from gensim.models.callbacks import CallbackAny2Vec
 from tqdm import tqdm
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
@@ -21,6 +22,20 @@ def generate_corpusfile(corpus_fname, n, out, col='MHC_sequence'):
             for ngram_pattern in ngram_patterns:
                 f.write(" ".join(ngram_pattern) + "\n")	# Take all the sequences and split them into kmers
 
+class EpochLogger(CallbackAny2Vec):
+    '''Callback to log information about training'''
+
+    def __init__(self, total_epochs):
+        self.epoch = 0
+        self.total_epochs = total_epochs
+        self.pbar = tqdm(total=total_epochs, desc="Training", leave=True, position=0)
+
+    def on_epoch_begin(self, model):
+        pass
+
+    def on_epoch_end(self, model):
+        self.pbar.update(1)
+        self.epoch += 1
 
 class ProtVec(word2vec.Word2Vec):
     def __init__(self, corpus_fname=None, n=3, size=100, out="output_corpus.txt", sg=1, window=25, min_count=1, col='MHC_sequence'):
@@ -31,6 +46,7 @@ class ProtVec(word2vec.Word2Vec):
         self.out = out
         self.vocab = min_count
         self.col = col
+        self.epochs = 5
 
         if(corpus_fname is not None):
             if(not os.path.isfile(out)):
@@ -44,7 +60,8 @@ class ProtVec(word2vec.Word2Vec):
     def word2vec_init(self, vectors_txt, model_weights):
         print("-- Initializing Word2Vec model --")
         print("-- Training the model --")
-        self.m = word2vec.Word2Vec(corpus_file=self.out, vector_size=self.size, sg=self.sg, window=self.window, min_count=self.vocab)
+        epoch_logger = EpochLogger(self.epochs)
+        self.m = word2vec.Word2Vec(corpus_file=self.out, vector_size=self.size, sg=self.sg, window=self.window, min_count=self.vocab, callbacks=[epoch_logger])
         self.m.wv.save_word2vec_format(vectors_txt)
         self.m.save(model_weights)
         print("-- Saving Model Weights to : %s " % (vectors_txt))
