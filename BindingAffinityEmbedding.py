@@ -23,12 +23,11 @@ def generate_corpusfile(corpus_fname, n, out, col='MHC_sequence'):
 
 
 class ProtVec(word2vec.Word2Vec):
-    def __init__(self, corpus_fname=None, n=3, size=100, out="output_corpus.txt", sg=1, window=25, min_count=1, workers=9, col='MHC_sequence'):
+    def __init__(self, corpus_fname=None, n=3, size=100, out="output_corpus.txt", sg=1, window=25, min_count=1, col='MHC_sequence'):
         self.size = size
         self.corpus_fname = corpus_fname
         self.sg = sg
         self.window = window
-        self.workers = workers
         self.out = out
         self.vocab = min_count
         self.col = col
@@ -40,13 +39,12 @@ class ProtVec(word2vec.Word2Vec):
             else:
                 print("-- Corpus File Found --")
 		
-        self.corpus = word2vec.Text8Corpus(out)
         print("-- Corpus Setup Successful --")
 
     def word2vec_init(self, vectors_txt, model_weights):
         print("-- Initializing Word2Vec model --")
         print("-- Training the model --")
-        self.m = word2vec.Word2Vec(self.corpus, vector_size=self.size, sg=self.sg, window=self.window, min_count=self.vocab, workers=self.workers)
+        self.m = word2vec.Word2Vec(corpus_file=self.out, vector_size=self.size, sg=self.sg, window=self.window, min_count=self.vocab)
         self.m.wv.save_word2vec_format(vectors_txt)
         self.m.save(model_weights)
         print("-- Saving Model Weights to : %s " % (vectors_txt))
@@ -55,6 +53,7 @@ class ProtVec(word2vec.Word2Vec):
         print("-- Load Word2Vec model --")
         self.m = word2vec.Word2Vec.load(model_weights)
         return self.m
+
 
 
 def tsne_plot(model, n_components=2, random_state=42):
