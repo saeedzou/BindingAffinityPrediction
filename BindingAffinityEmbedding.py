@@ -58,31 +58,28 @@ class ProtVec(word2vec.Word2Vec):
 
 
 def tsne_plot(model, n_components=2, random_state=42):
-	"""
-	Create a TSNE model and plot it
-	"""
-	print("-- Start t-SNE plot --")
-	labels = []
-	tokens = []
+  print("-- Start t-SNE plot --")
+  labels = []
+  tokens = []
 
-	for word in model.wv.vocab:
-		tokens.append(model[word])
-		labels.append(word)
+  for word in model.wv.key_to_index:
+    tokens.append(model.wv[word])
+    labels.append(word)
 
-	tsne_model = TSNE(n_components=n_components, random_state=random_state)
-	new_values = tsne_model.fit_transform(tokens)
+  tsne_model = TSNE(n_components=n_components, random_state=random_state)
+  new_values = tsne_model.fit_transform(np.array(tokens))
 
-	x = []
-	y = []
-	for value in new_values:
-		x.append(value[0])
-		y.append(value[1])
-	
-	plt.figure(figsize=(16, 16))
-	for i in range(len(x)):
-		plt.scatter(x[i], y[i])
-		plt.annotate(labels[i], xy=(x[i], y[i]), xytext=(5, 2), textcoords="offset points", ha="right", va="bottom")
-	plt.show()
+  x = []
+  y = []
+  for value in new_values:
+    x.append(value[0])
+    y.append(value[1])
+
+  plt.figure(figsize=(16, 16))
+  for i in range(len(x)):
+    plt.scatter(x[i], y[i])
+    plt.annotate(labels[i], xy=(x[i], y[i]), xytext=(5, 2), textcoords="offset points", ha="right", va="bottom")
+  plt.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train ProtVec using gensim (Word2Vec)")
