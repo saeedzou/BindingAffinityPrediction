@@ -1,12 +1,8 @@
-import tensorflow as tf
 import keras
-from keras.layers import Dense, Dropout, Input, Concatenate, Embedding, TextVectorization, GlobalAveragePooling1D, Bidirectional, LSTM
-from keras import backend as K
-import numpy as np
-import scipy.sparse as sps
+from keras.layers import Dense, Concatenate, Embedding, TextVectorization, GlobalAveragePooling1D, Bidirectional, LSTM
 import pandas as pd
 import matplotlib.pyplot as plt
-import os, time, logging, argparse
+import logging, argparse
 
 def load_csv(path):
     return pd.read_csv(path, index_col=0)
