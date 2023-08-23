@@ -65,11 +65,11 @@ def predict(test_csv, mhc_vec_path, pep_vec_path, model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train and predict using TFIDF')
-    parser.add_argument('train_csv', default='data/train.csv', help='Path to train csv file')
-    parser.add_argument('test_csv', default='data/val.csv', help='Path to test csv file')
-    parser.add_argument('mhc_vec_path', default='data/mhc_vec.pkl', help='Path to mhc vectorizer')
-    parser.add_argument('pep_vec_path', default='data/pep_vec.pkl', help='Path to peptide vectorizer')
-    parser.add_argument('model_path', default='data/tfidf_model.pkl', help='Path to model')
+    parser.add_argument('-t', '--train_csv', default='data/train.csv', help='Path to train csv file')
+    parser.add_argument('-v', '--test_csv', default='data/val.csv', help='Path to test csv file')
+    parser.add_argument('-m', '--mhc_vec_path', default='data/mhc_vec.pkl', help='Path to mhc vectorizer')
+    parser.add_argument('-p', '--pep_vec_path', default='data/pep_vec.pkl', help='Path to peptide vectorizer')
+    parser.add_argument('-o', '--model_path', default='data/tfidf_model.pkl', help='Path to model')
     args = parser.parse_args()
     # load model if exists
     if os.path.exists(args.model_path):
