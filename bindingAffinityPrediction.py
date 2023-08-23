@@ -2,7 +2,8 @@ import keras
 from keras.layers import Dense, Concatenate, Embedding, TextVectorization, GlobalAveragePooling1D, Bidirectional, LSTM
 import pandas as pd
 import matplotlib.pyplot as plt
-import logging, argparse
+import logging, argparse, sys
+from io import StringIO
 
 def load_csv(path):
     return pd.read_csv(path, index_col=0)
@@ -83,6 +84,8 @@ if __name__ == '__main__':
     parser.add_argument('-ru', '--rnn_units', type=int, default=32, help='Number of RNN units')
     parser.add_argument('-s', '--seq_len', type=int, default=100, help='Sequence length')
     args = parser.parse_args()
+    original_stdout = sys.stdout
+    sys.stdout = StringIO()
     log_path = f'./data/log_epochs_{args.epochs}_batch_size_{args.batch_size}_lr_{args.learning_rate}_loss_{args.loss}_embedding_dim_{args.embedding_dim}_rnn_units_{args.rnn_units}_seq_len_{args.seq_len}.txt'
     logging.basicConfig(level=logging.INFO, filename=log_path, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info('Logging Started')
@@ -102,8 +105,9 @@ if __name__ == '__main__':
     model = bindingPrediction(embedding_dim=args.embedding_dim, rnn_units=args.rnn_units, mhc_vec=mhc_vec, pep_vec=pep_vec)
     logging.info('Model Summary')
     model.build(input_shape=[(None, 1), (None, 1)])
-    print(model.summary())
-    logging.info(f'{model.summary()}')
+    model.summary()
+    logging.info(sys.stdout.getvalue())
+    sys.stdout = original_stdout
     metrics = [keras.metrics.BinaryAccuracy(name='accuracy'), 
                keras.metrics.Recall(name='recall'), 
                keras.metrics.Precision(name='precision'), 
