@@ -5,39 +5,81 @@ from sklearn.metrics import classification_report
 import pandas as pd
 import numpy as np
 import scipy.sparse as sps
+import tensorflow as tf
+import keras
+# import dense
+from keras.layers import Dense, Dropout, Input, Concatenate
 
-def train(train_csv, mhc_vec_path, pep_vec_path, model):
+class customLayer(keras.layers.Layer):
+    def __init__(self, hidden_dims=[32, 64], activation=None, **kwargs):
+        super(customLayer, self).__init__()
+        self.hidden_dims = hidden_dims
+        self.activation = keras.activations.get(activation)
+        self.denses = [Dense(dim, activation=self.activation) for dim in self.hidden_dims]
+    
+    def call(self, inputs):
+        x = inputs
+        for dense in self.denses:
+            x = dense(x)
+        return x
+
+class net(keras.Model):
+    def __init__(self, **kwargs):
+        super(net, self).__init__()
+        self.mhc = customLayer(activation='relu')
+        self.pep = customLayer(activation='relu')
+        self.concat = Concatenate(axis=1)
+        self.dense = Dense(1, activation='sigmoid')
+
+    def call(self, inputs):
+        mhc, pep = inputs
+        mhc = self.mhc(mhc)
+        pep = self.pep(pep)
+        x = self.concat([mhc, pep])
+        x = self.dense(x)
+        return x
+
+
+def train(train_csv, mhc_vec_path, pep_vec_path, model_path, lr=1e-3, epochs=5):
     # Read csv file
     print('-- Reading csv file --')
     df = pd.read_csv(train_csv, index_col=0)
     if os.path.exists(mhc_vec_path):
         print('-- Loading mhc vectorizer --')
         mhc_vec = joblib.load(mhc_vec_path)
-        X_mhc = mhc_vec.transform(df['MHC_sequence'])
+        X_mhc = mhc_vec.transform(df['MHC_sequence']).todense()
     else:
         print('-- Training mhc vectorizer --')
         mhc_vec = TfidfVectorizer(lowercase=False, analyzer='char')
-        X_mhc = mhc_vec.fit_transform(df['MHC_sequence'])
+        X_mhc = mhc_vec.fit_transform(df['MHC_sequence']).todense()
         print('-- Saving mhc vectorizer --')
         joblib.dump(mhc_vec, mhc_vec_path)
     if os.path.exists(pep_vec_path):
         print('-- Loading peptide vectorizer --')
         pep_vec = joblib.load(pep_vec_path)
-        X_pep = pep_vec.transform(df['peptide_sequence'])
+        X_pep = pep_vec.transform(df['peptide_sequence']).todense()
     else:
         print('-- Training peptide vectorizer --')
         pep_vec = TfidfVectorizer(lowercase=False, analyzer='char')
-        X_pep = pep_vec.fit_transform(df['peptide_sequence'])
+        X_pep = pep_vec.fit_transform(df['peptide_sequence']).todense()
         print('-- Saving peptide vectorizer --')
         joblib.dump(pep_vec, pep_vec_path)
-    X = sps.hstack([X_mhc, X_pep])
     y = np.array(df['label'])
-    # Train model
-    print('-- Training model --')
-    model.fit(X, y)
+    # Train model if not exists
+    if os.path.exists(model_path):
+        print('-- Loading model --')
+        model = keras.models.load_model(model_path)
+    else:
+        print('-- Training model --')
+        model = net()
+        optimizer = keras.optimizers.Adam(learning_rate=lr)
+        model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+        model.fit([X_mhc, X_pep], y, epochs=epochs, batch_size=64)
+        print('-- Saving model --')
+        model.save(model_path)
     return model
 
-def predict(test_csv, mhc_vec_path, pep_vec_path, model):
+def predict(test_csv, mhc_vec_path, pep_vec_path, model_path):
     # Read csv file
     print('-- Reading csv file --')
     df = pd.read_csv(test_csv, index_col=0)
@@ -49,15 +91,18 @@ def predict(test_csv, mhc_vec_path, pep_vec_path, model):
     # Load vectorizer
     print('-- Loading mhc vectorizer --')
     mhc_vec = joblib.load(mhc_vec_path)
-    X_mhc = mhc_vec.transform(df['MHC_sequence'])
+    X_mhc = mhc_vec.transform(df['MHC_sequence']).todense()
     print('-- Loading peptide vectorizer --')
     pep_vec = joblib.load(pep_vec_path)
-    X_pep = pep_vec.transform(df['peptide_sequence'])
-    X = sps.hstack([X_mhc, X_pep])
+    X_pep = pep_vec.transform(df['peptide_sequence']).todense()
     y = np.array(df['label'])
+    # load model
+    print('-- Loading model --')
+    model = keras.models.load_model(model_path)
     # Predict
     print('-- Predicting --')
-    y_pred = model.predict(X)
+    y_pred = model.predict([X_mhc, X_pep])
+    y_pred = np.round(y_pred)
     # Report
     print('-- Report --')
     print(classification_report(y, y_pred))
@@ -70,16 +115,10 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mhc_vec_path', default='data/mhc_vec.pkl', help='Path to mhc vectorizer')
     parser.add_argument('-p', '--pep_vec_path', default='data/pep_vec.pkl', help='Path to peptide vectorizer')
     parser.add_argument('-o', '--model_path', default='data/tfidf_model.pkl', help='Path to model')
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3, help='Learning rate')
+    parser.add_argument('-e', '--epochs', type=int, default=5, help='Number of epochs')
     args = parser.parse_args()
-    # load model if exists
-    if os.path.exists(args.model_path):
-        print('-- Loading model --')
-        model = joblib.load(args.model_path)
-    else:
-        print('-- Training model --')
-        model = LinearSVC()
-        model = train(args.train_csv, args.mhc_vec_path, args.pep_vec_path, model)
-        print('-- Saving model --')
-        joblib.dump(model, args.model_path)
+    # train
+    model = train(args.train_csv, args.mhc_vec_path, args.pep_vec_path, args.model_path, args.learning_rate, args.epochs)
     # predict
-    predict(args.test_csv, args.mhc_vec_path, args.pep_vec_path, model)
+    predict(args.test_csv, args.mhc_vec_path, args.pep_vec_path, args.model_path)
