@@ -131,7 +131,7 @@ if __name__ == '__main__':
     model.save(f'./data/model_epochs_{args.epochs}_batch_size_{args.batch_size}_lr_{args.learning_rate}_loss_{args.loss}_embedding_dim_{args.embedding_dim}_rnn_units_{args.rnn_units}_seq_len_{args.seq_len}.h5')
     logging.info('Saving History')
     hist = pd.DataFrame(h.history)
-    hist.to_csv('./data/train_history.csv')
+    hist.to_csv(f'./data/train_history_epochs_{args.epochs}_batch_size_{args.batch_size}_lr_{args.learning_rate}_loss_{args.loss}_embedding_dim_{args.embedding_dim}_rnn_units_{args.rnn_units}_seq_len_{args.seq_len}.csv')
     logging.info('Done')
 
     logging.info('Plotting History')
