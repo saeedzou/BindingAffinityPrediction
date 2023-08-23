@@ -102,8 +102,9 @@ if __name__ == '__main__':
     model = bindingPrediction(embedding_dim=args.embedding_dim, rnn_units=args.rnn_units, mhc_vec=mhc_vec, pep_vec=pep_vec)
     logging.info('Model Summary')
     model.build(input_shape=[(None, 1), (None, 1)])
-    print(model.summary())
-    logging.info(f'{model.summary()}')
+    summary_buffer = []
+    model.summary(print_fn=lambda x: summary_buffer.append(x))
+    logging.info('\n'.join(summary_buffer))
     metrics = [keras.metrics.BinaryAccuracy(name='accuracy'), 
             keras.metrics.Recall(name='recall'), 
             keras.metrics.Precision(name='precision'), 
