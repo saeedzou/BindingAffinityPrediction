@@ -16,8 +16,8 @@ def split_train_test(csv_path, test_size=0.15, val_size=0.15, train_path="train.
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Split data into train, val, and test sets')
     parser.add_argument('-f', '--csv_path', default="./data/binding_affinity_data.csv", help='path to the input csv file')
-    parser.add_argument('-t', '--test_size', default=0.15, help='test set size')
-    parser.add_argument('-v', '--val_size', default=0.15, help='validation set size')
+    parser.add_argument('-t', '--test_size', type=float, default=0.15, help='test set size')
+    parser.add_argument('-v', '--val_size', type=float, default=0.15, help='validation set size')
     parser.add_argument('-tp', '--train_path', default="./data/train.csv", help='path to save train set')
     parser.add_argument('-vp', '--val_path', default="./data/val.csv", help='path to save validation set')
     parser.add_argument('-tep', '--test_path', default="./data/test.csv", help='path to save test set')
