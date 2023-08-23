@@ -13,11 +13,11 @@ def train(train_csv, mhc_vec_path, pep_vec_path, model):
     if os.path.exists(mhc_vec_path):
         print('-- Loading mhc vectorizer --')
         mhc_vec = joblib.load(mhc_vec_path)
-        X_mhc = mhc_vec.transform(df['mhc_sequence'])
+        X_mhc = mhc_vec.transform(df['MHC_sequence'])
     else:
         print('-- Training mhc vectorizer --')
         mhc_vec = TfidfVectorizer(lowercase=False, analyzer='char')
-        X_mhc = mhc_vec.fit_transform(df['mhc_sequence'])
+        X_mhc = mhc_vec.fit_transform(df['MHC_sequence'])
         print('-- Saving mhc vectorizer --')
         joblib.dump(mhc_vec, mhc_vec_path)
     if os.path.exists(pep_vec_path):
@@ -49,7 +49,7 @@ def predict(test_csv, mhc_vec_path, pep_vec_path, model):
     # Load vectorizer
     print('-- Loading mhc vectorizer --')
     mhc_vec = joblib.load(mhc_vec_path)
-    X_mhc = mhc_vec.transform(df['mhc_sequence'])
+    X_mhc = mhc_vec.transform(df['MHC_sequence'])
     print('-- Loading peptide vectorizer --')
     pep_vec = joblib.load(pep_vec_path)
     X_pep = pep_vec.transform(df['peptide_sequence'])
