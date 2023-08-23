@@ -109,17 +109,13 @@ if __name__ == '__main__':
     logging.info(sys.stdout.getvalue())
     sys.stdout = original_stdout
     metrics = [keras.metrics.BinaryAccuracy(name='accuracy'), 
-               keras.metrics.Recall(name='recall'), 
-               keras.metrics.Precision(name='precision'), 
-               keras.metrics.AUC(name='auc')]
-    logging.info('Compiling Model')
-    logging.info('Metrics: ', [m.name for m in model.metrics])
+            keras.metrics.Recall(name='recall'), 
+            keras.metrics.Precision(name='precision'), 
+            keras.metrics.AUC(name='auc')]
     lr = args.learning_rate
     optimizer = keras.optimizers.Adam(learning_rate=lr)
-    logging.info('Optimizer: ', optimizer, 'Learning Rate: ', lr)
-    loss = args.loss
-    logging.info('Loss: ', loss)
-    model.compile(optimizer='adam', loss=loss, metrics=metrics)
+    logging.info(f'Compiling Model | Metrics: {[m.name for m in metrics]} | Learning Rate: {lr} | Loss: {args.loss}')
+    model.compile(optimizer='adam', loss=args.loss, metrics=metrics)
 
     logging.info('Training Model')
     h = model.fit([train['MHC_sequence'].values, 
