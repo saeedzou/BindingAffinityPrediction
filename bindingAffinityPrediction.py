@@ -1,11 +1,16 @@
 import keras
-from keras.layers import Dense, Concatenate, Embedding, TextVectorization, Dropout, Bidirectional, LSTM, Input
+from keras.layers import Dense, Concatenate, Embedding, TextVectorization, Dropout, Bidirectional, LSTM, Input, Add
 import pandas as pd
 import matplotlib.pyplot as plt
 import logging, argparse, pickle, os
 
 def load_csv(path):
     return pd.read_csv(path, index_col=0)
+
+def log_path(args, type, format):
+    return (f'./log/{type}_e{args.epochs}_bs{args.batch_size}_lr{args.learning_rate}'
+            f'_loss{args.loss}_ed{args.embedding_dim}_ru{args.rnn_units}_sl{args.seq_len}'
+            f'_cd{args.context_dim}_vs{args.vocab_size}_fci{args.fc_in_units}_fco{args.fc_out_units}.{format}')
 
 def adapt_vectorizer(vec, data):
     vec.adapt(data)
@@ -52,9 +57,21 @@ class Attention(keras.layers.Layer):
 
     def build(self, input_shape):
         self.tanh = keras.layers.Activation('tanh')
-        self.weight = self.add_weight(shape=(self.feature_dim, self.context_dim), initializer=keras.initializers.GlorotUniform(), trainable=True, name="attention_weight")
-        self.b = self.add_weight(shape=(self.step_dim, self.context_dim), initializer='zeros', trainable=True, name="attention_b")
-        self.context_vector = self.add_weight(shape=(self.context_dim, 1), initializer=keras.initializers.GlorotUniform(), trainable=True, name="attention_context_vector")
+        self.weight = self.add_weight(
+            shape=(self.feature_dim, self.context_dim), 
+            initializer=keras.initializers.GlorotUniform(), 
+            trainable=True, 
+            name="attention_weight")
+        self.b = self.add_weight(
+            shape=(self.step_dim, self.context_dim), 
+            initializer='zeros', 
+            trainable=True, 
+            name="attention_b")
+        self.context_vector = self.add_weight(
+            shape=(self.context_dim, 1), 
+            initializer=keras.initializers.GlorotUniform(), 
+            trainable=True, 
+            name="attention_context_vector")
         super(Attention, self).build(input_shape)
 
     def call(self, x):
@@ -68,33 +85,44 @@ class Attention(keras.layers.Layer):
     
     def get_config(self):
         config = super(Attention, self).get_config()
-        config.update({'feature_dim': self.feature_dim, 'step_dim': self.step_dim, 'context_dim': self.context_dim})
+        config.update({
+            'feature_dim': self.feature_dim, 
+            'step_dim': self.step_dim, 
+            'context_dim': self.context_dim})
         return config
     
     @classmethod
     def from_config(cls, config):
         return cls(**config)
     
-def bindingPrediction(embedding_dim=64, rnn_units=32, seq_len=100, context_dim=16, vocab_size=22, fc_in_units=32, fc_out_units=32):
-    mhc_input = Input(shape=(seq_len,), dtype='int32')
-    pep_input = Input(shape=(seq_len,), dtype='int32')
+def bindingPrediction(
+        embedding_dim=64, 
+        rnn_units=32, 
+        seq_len=100, 
+        context_dim=16, 
+        vocab_size=22, 
+        fc_in_units=32, 
+        fc_out_units=32):
+    
+    mhc_input = Input(shape=(seq_len,), dtype='int32', name='MHC-sequence')
+    pep_input = Input(shape=(seq_len,), dtype='int32', name='peptide-sequence')
 
-    mhc_emb = Embedding(vocab_size, embedding_dim)(mhc_input)
-    mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(mhc_emb)
-    mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(mhc_rnn)
-    mhc_att = Attention(embedding_dim, seq_len, context_dim)(mhc_rnn)
-    mhc = Dense(fc_in_units, activation='relu')(mhc_att)
+    mhc_emb = Embedding(vocab_size, embedding_dim, name='MHC-embedding')(mhc_input)
+    mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True, name='MHC-LSTM-1'), name='MHC-BiLSTM-1')(mhc_emb)
+    mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True, name='MHC-LSTM-2'), name='MHC-BiLSTM-2')(mhc_rnn)
+    mhc_att = Attention(embedding_dim, seq_len, context_dim, name='MHC-attention')(mhc_rnn)
+    mhc = Dense(fc_in_units, activation='relu', name='MHC-FC')(mhc_att)
 
-    pep_emb = Embedding(vocab_size, embedding_dim)(pep_input)
-    pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(pep_emb)
-    pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(pep_rnn)
-    pep_att = Attention(embedding_dim, seq_len, context_dim)(pep_rnn)
-    pep = Dense(fc_in_units, activation='relu')(pep_att)
+    pep_emb = Embedding(vocab_size, embedding_dim, name='peptide-embedding')(pep_input)
+    pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True, name='peptide-LSTM-1'), name='peptide-BiLSTM-1')(pep_emb)
+    pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True, name='peptide-LSTM-2'), name='peptide-BiLSTM-2')(pep_rnn)
+    pep_att = Attention(embedding_dim, seq_len, context_dim, name='peptide-attention')(pep_rnn)
+    pep = Dense(fc_in_units, activation='relu', name='peptide-FC')(pep_att)
     
     x = Concatenate(axis=1)([mhc, pep])
-    x = Dense(fc_out_units, activation='relu')(x)
+    x = Dense(fc_out_units, activation='relu', name='concat-FC')(x)
     x = Dropout(0.2)(x)
-    x = Dense(1, activation='sigmoid')(x)
+    x = Dense(1, activation='sigmoid', name='output')(x)
     model = keras.Model(inputs=[mhc_input, pep_input], outputs=x)
     return model
 
@@ -115,8 +143,10 @@ if __name__ == '__main__':
     parser.add_argument('-fco', '--fc_out_units', type=int, default=32, help='Number of units in outer fully connected layer')
     parser.add_argument('-cd', '--context_dim', type=int, default=16, help='Context dimension')
     args = parser.parse_args()
-    log_path = f'./log/log_epochs_{args.epochs}_batch_size_{args.batch_size}_lr_{args.learning_rate}_loss_{args.loss}_embedding_dim_{args.embedding_dim}_rnn_units_{args.rnn_units}_seq_len_{args.seq_len}.txt'
-    logging.basicConfig(level=logging.INFO, filename=log_path, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
+    log_path = log_path(args, 'train', 'log')
+    logging.basicConfig(
+        level=logging.INFO, filename=log_path, filemode='w', 
+        format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info('Logging Started')
     logging.info('Loading Training Data')
     train = load_csv(args.train)
@@ -125,11 +155,16 @@ if __name__ == '__main__':
 
 
     if not os.path.exists('./data/mhc_vec.pkl'):
-        mhc_vec = TextVectorization(split='character', output_mode='int', output_sequence_length=args.seq_len, standardize=None)
+        mhc_vec = TextVectorization(
+            split='character', output_mode='int', 
+            output_sequence_length=args.seq_len, standardize=None)
         logging.info('Fitting MHC Vectorizer')
         mhc_vec = adapt_vectorizer(mhc_vec, train['MHC_sequence'].values)
         with open('./data/mhc_vec.pkl', 'wb') as f:
-            pickle.dump({'config': mhc_vec.get_config(), 'weights': mhc_vec.get_weights()}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(
+                {'config': mhc_vec.get_config(), 
+                'weights': mhc_vec.get_weights()}, 
+                f, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         logging.info('Loading MHC Vectorizer')
         with open('./data/mhc_vec.pkl', 'rb') as f:
@@ -138,11 +173,16 @@ if __name__ == '__main__':
         mhc_vec.set_weights(info['weights'])
 
     if not os.path.exists('./data/pep_vec.pkl'):
-        pep_vec = TextVectorization(split='character', output_mode='int', output_sequence_length=args.seq_len, standardize=None)
+        pep_vec = TextVectorization(
+            split='character', output_mode='int', 
+            output_sequence_length=args.seq_len, standardize=None)
         logging.info('Fitting Peptide Vectorizer')
         pep_vec = adapt_vectorizer(pep_vec, train['peptide_sequence'].values)
         with open('./data/pep_vec.pkl', 'wb') as f:
-            pickle.dump({'config': pep_vec.get_config(), 'weights': pep_vec.get_weights()}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(
+                {'config': pep_vec.get_config(), 
+                 'weights': pep_vec.get_weights()}, 
+                f, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         logging.info('Loading Peptide Vectorizer')
         with open('./data/pep_vec.pkl', 'rb') as f:
@@ -160,6 +200,7 @@ if __name__ == '__main__':
                                 fc_out_units=args.fc_out_units)
     logging.info('Model Summary')
     model.build(input_shape=[(None, 1), (None, 1)])
+    keras.utils.plot_model(model, to_file='./data/model.png', show_shapes=True, dpi=512)
     summary_buffer = []
     model.summary(print_fn=lambda x: summary_buffer.append(x))
     logging.info('\n'.join(summary_buffer))
@@ -169,7 +210,8 @@ if __name__ == '__main__':
             keras.metrics.AUC(name='auc')]
     lr = args.learning_rate
     optimizer = keras.optimizers.Adam(learning_rate=lr)
-    logging.info(f'Compiling Model | Metrics: {[m.name for m in metrics]} | Learning Rate: {lr} | Loss: {args.loss}')
+    logging.info(f'Compiling Model | Metrics: {[m.name for m in metrics]} '
+                 f'| Learning Rate: {lr} | Loss: {args.loss}')
     model.compile(optimizer='adam', loss=args.loss, metrics=metrics)
 
     logging.info('Training Model')
@@ -185,10 +227,12 @@ if __name__ == '__main__':
                                     val['label'].values))
     
     logging.info('Saving Model')
-    model.save(f'./data/model_epochs_{args.epochs}_batch_size_{args.batch_size}_lr_{args.learning_rate}_loss_{args.loss}_embedding_dim_{args.embedding_dim}_rnn_units_{args.rnn_units}_seq_len_{args.seq_len}', save_format='tf')
+    model_path = log_path(args, 'model', 'h5')
+    model.save(model_path)
     logging.info('Saving History')
     hist = pd.DataFrame(h.history)
-    hist.to_csv(f'./data/train_history_epochs_{args.epochs}_batch_size_{args.batch_size}_lr_{args.learning_rate}_loss_{args.loss}_embedding_dim_{args.embedding_dim}_rnn_units_{args.rnn_units}_seq_len_{args.seq_len}.csv')
+    hist_path = log_path(args, 'history', 'csv')
+    hist.to_csv(hist_path)
     logging.info('Done')
 
     logging.info('Plotting History')
@@ -197,14 +241,10 @@ if __name__ == '__main__':
     logging.info('Evaluating Model')
     # evaluate on training data
     logging.info('On Training Data:')
-    model.evaluate([train['MHC_sequence'].values,
-                    train['peptide_sequence'].values],
-                   train['label'].values)
+    model.evaluate([mhc_train, pep_train], train['label'].values)
     # evaluate on validation data
     logging.info('On Validation Data:')
-    model.evaluate([val['MHC_sequence'].values,
-                    val['peptide_sequence'].values],
-                   val['label'].values)
+    model.evaluate([mhc_val, pep_val], val['label'].values)
     
     logging.info('Done')
     logging.info('Logging Ended')
