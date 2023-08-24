@@ -47,6 +47,8 @@ def display_history(hist):
 class bindingPrediction(keras.Model):
     def __init__(self, embedding_dim=64, rnn_units=32, mhc_vec=None, pep_vec=None, **kwargs):
         super(bindingPrediction, self).__init__()
+        self.embedding_dim = embedding_dim
+        self.rnn_units = rnn_units
         self.mhc_vec = mhc_vec
         self.pep_vec = pep_vec
         self.mhc_emb = Embedding(len(mhc_vec.get_vocabulary()), embedding_dim)
@@ -56,7 +58,6 @@ class bindingPrediction(keras.Model):
         self.fc2 = Dense(1, activation='sigmoid')
         self.mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))
         self.pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))
-
 
     def call(self, inputs):
         mhc, pep = inputs
@@ -69,6 +70,11 @@ class bindingPrediction(keras.Model):
         x = self.fc1(x)
         x = self.fc2(x)
         return x
+
+    def get_config(self):
+        config = super(bindingPrediction, self).get_config()
+        config.update({'mhc_vec': self.mhc_vec, 'pep_vec': self.pep_vec, 'embedding_dim': self.embedding_dim, 'rnn_units': self.rnn_units})
+        return config
 
 
 if __name__ == '__main__':
