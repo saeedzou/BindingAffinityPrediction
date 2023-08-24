@@ -57,6 +57,7 @@ class bindingPrediction(keras.Model):
         self.mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))
         self.pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))
 
+
     def call(self, inputs):
         mhc, pep = inputs
         mhc = self.mhc_emb(self.mhc_vec(mhc))
@@ -68,11 +69,6 @@ class bindingPrediction(keras.Model):
         x = self.fc1(x)
         x = self.fc2(x)
         return x
-
-    def get_config(self):
-        config = super(bindingPrediction, self).get_config()
-        config.update({'mhc_vec': self.mhc_vec, 'pep_vec': self.pep_vec, 'embedding_dim': self.embedding_dim, 'rnn_units': self.rnn_units})
-        return config
 
 
 if __name__ == '__main__':
