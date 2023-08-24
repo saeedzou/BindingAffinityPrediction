@@ -66,11 +66,7 @@ class bindingPrediction(keras.Model):
         self.pep_rnn = keras.Sequential([self.pep_rnn1, self.pep_rnn2])
         self.dropout = Dropout(0.2)
         self.attention_mhc = Attention()
-<<<<<<< HEAD
         self.attention_pep = Attention()
-=======
-        self.attention_pip = Attention()
->>>>>>> 0926083f4b7663b03dcf8c63de2a0b5552992963
 
     def call(self, inputs):
         mhc, pep = inputs
