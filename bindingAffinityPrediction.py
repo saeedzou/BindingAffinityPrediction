@@ -1,5 +1,5 @@
 import keras
-from keras.layers import Dense, Concatenate, Embedding, TextVectorization, Dropout, Bidirectional, LSTM
+from keras.layers import Dense, Concatenate, Embedding, TextVectorization, Dropout, Bidirectional, LSTM, Attention, GlobalAveragePooling1D
 import pandas as pd
 import matplotlib.pyplot as plt
 import logging, argparse
@@ -54,15 +54,19 @@ class bindingPrediction(keras.Model):
         self.mhc_emb = Embedding(len(mhc_vec.get_vocabulary()), embedding_dim)
         self.pep_emb = Embedding(len(pep_vec.get_vocabulary()), embedding_dim)
         self.concat = Concatenate(axis=1)
+        self.mhc_fc = Dense(32, activation='relu')
+        self.pep_fc = Dense(32, activation='relu')
         self.fc1 = Dense(32, activation='relu')
         self.fc2 = Dense(1, activation='sigmoid')
         self.mhc_rnn1 = Bidirectional(LSTM(rnn_units, return_sequences=True))
-        self.mhc_rnn2 = Bidirectional(LSTM(rnn_units))
+        self.mhc_rnn2 = Bidirectional(LSTM(rnn_units, return_sequences=True))
         self.pep_rnn1 = Bidirectional(LSTM(rnn_units, return_sequences=True))
-        self.pep_rnn2 = Bidirectional(LSTM(rnn_units))
+        self.pep_rnn2 = Bidirectional(LSTM(rnn_units, return_sequences=True))
         self.mhc_rnn = keras.Sequential([self.mhc_rnn1, self.mhc_rnn2])
         self.pep_rnn = keras.Sequential([self.pep_rnn1, self.pep_rnn2])
         self.dropout = Dropout(0.2)
+        self.attention_mhc = Attention()
+        self.attention_pep = Attention()
 
     def call(self, inputs):
         mhc, pep = inputs
@@ -70,6 +74,12 @@ class bindingPrediction(keras.Model):
         pep = self.pep_emb(self.pep_vec(pep))
         mhc = self.mhc_rnn(mhc)
         pep = self.pep_rnn(pep)
+        mhc = self.attention_mhc([mhc, mhc])
+        pep = self.attention_pep([pep, pep])
+        mhc = GlobalAveragePooling1D()(mhc)
+        pep = GlobalAveragePooling1D()(pep)
+        mhc = self.mhc_fc(mhc)
+        pep = self.pep_fc(pep)
         x = self.concat([mhc, pep])
         x = self.fc1(x)
         x = self.dropout(x)
