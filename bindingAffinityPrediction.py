@@ -1,8 +1,8 @@
 import keras
-from keras.layers import Dense, Concatenate, Embedding, TextVectorization, Dropout, Bidirectional, LSTM, Attention, GlobalAveragePooling1D
+from keras.layers import Dense, Concatenate, Embedding, TextVectorization, Dropout, Bidirectional, LSTM, Input
 import pandas as pd
 import matplotlib.pyplot as plt
-import logging, argparse
+import logging, argparse, pickle, os
 
 def load_csv(path):
     return pd.read_csv(path, index_col=0)
@@ -43,53 +43,60 @@ def display_history(hist):
     plt.savefig('./data/auc.png')
     plt.show()
 
+class Attention(keras.layers.Layer):
+    def __init__(self, feature_dim, step_dim, context_dim, **kwargs):
+        super(Attention, self).__init__(**kwargs)
+        self.feature_dim = feature_dim
+        self.step_dim = step_dim
+        self.context_dim = context_dim
 
-class bindingPrediction(keras.Model):
-    def __init__(self, embedding_dim=64, rnn_units=32, mhc_vec=None, pep_vec=None, **kwargs):
-        super(bindingPrediction, self).__init__()
-        self.embedding_dim = embedding_dim
-        self.rnn_units = rnn_units
-        self.mhc_vec = mhc_vec
-        self.pep_vec = pep_vec
-        self.mhc_emb = Embedding(len(mhc_vec.get_vocabulary()), embedding_dim)
-        self.pep_emb = Embedding(len(pep_vec.get_vocabulary()), embedding_dim)
-        self.concat = Concatenate(axis=1)
-        self.mhc_fc = Dense(32, activation='relu')
-        self.pep_fc = Dense(32, activation='relu')
-        self.fc1 = Dense(32, activation='relu')
-        self.fc2 = Dense(1, activation='sigmoid')
-        self.mhc_rnn1 = Bidirectional(LSTM(rnn_units, return_sequences=True))
-        self.mhc_rnn2 = Bidirectional(LSTM(rnn_units, return_sequences=True))
-        self.pep_rnn1 = Bidirectional(LSTM(rnn_units, return_sequences=True))
-        self.pep_rnn2 = Bidirectional(LSTM(rnn_units, return_sequences=True))
-        self.mhc_rnn = keras.Sequential([self.mhc_rnn1, self.mhc_rnn2])
-        self.pep_rnn = keras.Sequential([self.pep_rnn1, self.pep_rnn2])
-        self.dropout = Dropout(0.2)
-        self.attention_mhc = Attention()
-        self.attention_pep = Attention()
+    def build(self, input_shape):
+        self.tanh = keras.layers.Activation('tanh')
+        self.weight = self.add_weight(shape=(self.feature_dim, self.context_dim), initializer=keras.initializers.GlorotUniform(), trainable=True, name="attention_weight")
+        self.b = self.add_weight(shape=(self.step_dim, self.context_dim), initializer='zeros', trainable=True, name="attention_b")
+        self.context_vector = self.add_weight(shape=(self.context_dim, 1), initializer=keras.initializers.GlorotUniform(), trainable=True, name="attention_context_vector")
+        super(Attention, self).build(input_shape)
 
-    def call(self, inputs):
-        mhc, pep = inputs
-        mhc = self.mhc_emb(self.mhc_vec(mhc))
-        pep = self.pep_emb(self.pep_vec(pep))
-        mhc = self.mhc_rnn(mhc)
-        pep = self.pep_rnn(pep)
-        mhc = self.attention_mhc([mhc, mhc])
-        pep = self.attention_pep([pep, pep])
-        mhc = GlobalAveragePooling1D()(mhc)
-        pep = GlobalAveragePooling1D()(pep)
-        mhc = self.mhc_fc(mhc)
-        pep = self.pep_fc(pep)
-        x = self.concat([mhc, pep])
-        x = self.fc1(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        return x
-
+    def call(self, x):
+        eij = keras.backend.dot(x, self.weight)
+        eij = self.tanh(keras.backend.bias_add(eij, self.b))
+        v = keras.backend.exp(keras.backend.dot(eij, self.context_vector))
+        v = v / (keras.backend.sum(v, axis=1, keepdims=True))
+        weighted_input = x * v
+        s = keras.backend.sum(weighted_input, axis=1)
+        return s
+    
     def get_config(self):
-        config = super(bindingPrediction, self).get_config()
-        config.update({'mhc_vec': self.mhc_vec, 'pep_vec': self.pep_vec, 'embedding_dim': self.embedding_dim, 'rnn_units': self.rnn_units})
+        config = super(Attention, self).get_config()
+        config.update({'feature_dim': self.feature_dim, 'step_dim': self.step_dim, 'context_dim': self.context_dim})
         return config
+    
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+    
+def bindingPrediction(embedding_dim=64, rnn_units=32, seq_len=100, context_dim=16, vocab_size=22, fc_in_units=32, fc_out_units=32):
+    mhc_input = Input(shape=(seq_len,), dtype='int32')
+    pep_input = Input(shape=(seq_len,), dtype='int32')
+
+    mhc_emb = Embedding(vocab_size, embedding_dim)(mhc_input)
+    mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(mhc_emb)
+    mhc_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(mhc_rnn)
+    mhc_att = Attention(embedding_dim, seq_len, context_dim)(mhc_rnn)
+    mhc = Dense(fc_in_units, activation='relu')(mhc_att)
+
+    pep_emb = Embedding(vocab_size, embedding_dim)(pep_input)
+    pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(pep_emb)
+    pep_rnn = Bidirectional(LSTM(rnn_units, return_sequences=True))(pep_rnn)
+    pep_att = Attention(embedding_dim, seq_len, context_dim)(pep_rnn)
+    pep = Dense(fc_in_units, activation='relu')(pep_att)
+    
+    x = Concatenate(axis=1)([mhc, pep])
+    x = Dense(fc_out_units, activation='relu')(x)
+    x = Dropout(0.2)(x)
+    x = Dense(1, activation='sigmoid')(x)
+    model = keras.Model(inputs=[mhc_input, pep_input], outputs=x)
+    return model
 
 
 if __name__ == '__main__':
@@ -103,6 +110,10 @@ if __name__ == '__main__':
     parser.add_argument('-ed', '--embedding_dim', type=int, default=64, help='Embedding dimension')
     parser.add_argument('-ru', '--rnn_units', type=int, default=32, help='Number of RNN units')
     parser.add_argument('-s', '--seq_len', type=int, default=100, help='Sequence length')
+    parser.add_argument('-v', '--vocab_size', type=int, default=22, help='Vocabulary size')
+    parser.add_argument('-fci', '--fc_in_units', type=int, default=32, help='Number of units in inner fully connected layer')
+    parser.add_argument('-fco', '--fc_out_units', type=int, default=32, help='Number of units in outer fully connected layer')
+    parser.add_argument('-cd', '--context_dim', type=int, default=16, help='Context dimension')
     args = parser.parse_args()
     log_path = f'./data/log_epochs_{args.epochs}_batch_size_{args.batch_size}_lr_{args.learning_rate}_loss_{args.loss}_embedding_dim_{args.embedding_dim}_rnn_units_{args.rnn_units}_seq_len_{args.seq_len}.txt'
     logging.basicConfig(level=logging.INFO, filename=log_path, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
@@ -112,15 +123,41 @@ if __name__ == '__main__':
     logging.info('Loading Validation Data')
     val = load_csv(args.val)
 
-    mhc_vec = TextVectorization(split='character', output_mode='int', output_sequence_length=args.seq_len)
-    logging.info('Fitting MHC Vectorizer')
-    mhc_vec = adapt_vectorizer(mhc_vec, train['MHC_sequence'].values)
-    pep_vec = TextVectorization(split='character', output_mode='int', output_sequence_length=args.seq_len)
-    logging.info('Fitting Peptide Vectorizer')
-    pep_vec = adapt_vectorizer(pep_vec, train['peptide_sequence'].values)
 
+    if not os.path.exists('./data/mhc_vec.pkl'):
+        mhc_vec = TextVectorization(split='character', output_mode='int', output_sequence_length=args.seq_len, standardize=None)
+        logging.info('Fitting MHC Vectorizer')
+        mhc_vec = adapt_vectorizer(mhc_vec, train['MHC_sequence'].values)
+        with open('./data/mhc_vec.pkl', 'wb') as f:
+            pickle.dump({'config': mhc_vec.get_config(), 'weights': mhc_vec.get_weights()}, f, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        logging.info('Loading MHC Vectorizer')
+        with open('./data/mhc_vec.pkl', 'rb') as f:
+            info = pickle.load(f)
+        mhc_vec = TextVectorization.from_config(info['config'])
+        mhc_vec.set_weights(info['weights'])
+
+    if not os.path.exists('./data/pep_vec.pkl'):
+        pep_vec = TextVectorization(split='character', output_mode='int', output_sequence_length=args.seq_len, standardize=None)
+        logging.info('Fitting Peptide Vectorizer')
+        pep_vec = adapt_vectorizer(pep_vec, train['peptide_sequence'].values)
+        with open('./data/pep_vec.pkl', 'wb') as f:
+            pickle.dump({'config': pep_vec.get_config(), 'weights': pep_vec.get_weights()}, f, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        logging.info('Loading Peptide Vectorizer')
+        with open('./data/pep_vec.pkl', 'rb') as f:
+            info = pickle.load(f)
+        pep_vec = TextVectorization.from_config(info['config'])
+        pep_vec.set_weights(info['weights'])
+    
     logging.info('Creating Model')
-    model = bindingPrediction(embedding_dim=args.embedding_dim, rnn_units=args.rnn_units, mhc_vec=mhc_vec, pep_vec=pep_vec)
+    model = bindingPrediction(embedding_dim=args.embedding_dim,
+                                rnn_units=args.rnn_units,
+                                seq_len=args.seq_len,
+                                context_dim=args.context_dim,
+                                vocab_size=args.vocab_size,
+                                fc_in_units=args.fc_in_units,
+                                fc_out_units=args.fc_out_units)
     logging.info('Model Summary')
     model.build(input_shape=[(None, 1), (None, 1)])
     summary_buffer = []
@@ -136,13 +173,15 @@ if __name__ == '__main__':
     model.compile(optimizer='adam', loss=args.loss, metrics=metrics)
 
     logging.info('Training Model')
-    h = model.fit([train['MHC_sequence'].values, 
-                   train['peptide_sequence'].values], 
+    mhc_train = mhc_vec(train['MHC_sequence'].values)
+    pep_train = pep_vec(train['peptide_sequence'].values)
+    mhc_val = mhc_vec(val['MHC_sequence'].values)
+    pep_val = pep_vec(val['peptide_sequence'].values)
+    h = model.fit([mhc_train, pep_train], 
                   train['label'].values, 
                   epochs=args.epochs, 
                   batch_size=args.batch_size, 
-                  validation_data=([val['MHC_sequence'].values, 
-                                    val['peptide_sequence'].values], 
+                  validation_data=([mhc_val, pep_val], 
                                     val['label'].values))
     
     logging.info('Saving Model')
