@@ -1,6 +1,7 @@
 import keras
 from keras.layers import Dense, Concatenate, Embedding, TextVectorization, Dropout, Bidirectional, LSTM, Input, Add
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import logging, argparse, pickle, os
 
@@ -47,6 +48,31 @@ def display_history(hist):
     plt.title('AUC')
     plt.savefig('./data/auc.png')
     plt.show()
+
+class DataGenerator(keras.utils.Sequence):
+    def __init__(self, data, mhc_vec, pep_vec, batch_size=64, shuffle=True):
+        self.data = data
+        self.mhc_vec = mhc_vec
+        self.pep_vec = pep_vec
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.on_epoch_end()
+
+    def __len__(self):
+        return int(np.floor(len(self.data) / self.batch_size))
+    
+    def __getitem__(self, index):
+        indices = self.indices[index*self.batch_size:(index+1)*self.batch_size]
+        batch = self.data.iloc[indices]
+        mhc = self.mhc_vec(batch['MHC_sequence'].values)
+        pep = self.pep_vec(batch['peptide_sequence'].values)
+        label = batch['label'].values
+        return [mhc, pep], label
+    
+    def on_epoch_end(self):
+        self.indices = np.arange(len(self.data))
+        if self.shuffle:
+            np.random.shuffle(self.indices)
 
 class Attention(keras.layers.Layer):
     def __init__(self, feature_dim, step_dim, context_dim, **kwargs):
@@ -215,16 +241,12 @@ if __name__ == '__main__':
     model.compile(optimizer='adam', loss=args.loss, metrics=metrics)
 
     logging.info('Training Model')
-    mhc_train = mhc_vec(train['MHC_sequence'].values)
-    pep_train = pep_vec(train['peptide_sequence'].values)
-    mhc_val = mhc_vec(val['MHC_sequence'].values)
-    pep_val = pep_vec(val['peptide_sequence'].values)
-    h = model.fit([mhc_train, pep_train], 
-                  train['label'].values, 
+    train_data_generator = DataGenerator(train, mhc_vec, pep_vec, batch_size=args.batch_size)
+    val_data_generator = DataGenerator(val, mhc_vec, pep_vec, batch_size=args.batch_size, shuffle=False)
+    h = model.fit(train_data_generator, 
                   epochs=args.epochs, 
                   batch_size=args.batch_size, 
-                  validation_data=([mhc_val, pep_val], 
-                                    val['label'].values))
+                  validation_data=val_data_generator)
     
     logging.info('Saving Model')
     model_path = log_path(args, 'model', 'h5')
@@ -241,10 +263,10 @@ if __name__ == '__main__':
     logging.info('Evaluating Model')
     # evaluate on training data
     logging.info('On Training Data:')
-    model.evaluate([mhc_train, pep_train], train['label'].values)
+    model.evaluate(train_data_generator)
     # evaluate on validation data
     logging.info('On Validation Data:')
-    model.evaluate([mhc_val, pep_val], val['label'].values)
+    model.evaluate(val_data_generator)
     
     logging.info('Done')
     logging.info('Logging Ended')
