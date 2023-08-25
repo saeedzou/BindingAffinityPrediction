@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import logging, argparse, pickle, os
 import tensorflow as tf
-from utils import load_csv, log_path, adapt_vectorizer, display_history
+from utils import load_csv, path_formatter, adapt_vectorizer, display_history
 from dataloader import DataGenerator
 from models import mhcAttentionAdd, mhcAttentionCombined, mhcAttentionConcat, mhcAttentionSimple, mhcNoAttention
 
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--model', type=str, default='mhcAttentionAdd', 
                         help='Model to use. Options: mhcAttentionAdd, mhcAttentionCombined, mhcAttentionConcat, mhcAttentionSimple, mhcNoAttention')
     args = parser.parse_args()
-    log_path = log_path(args, 'train', 'log')
+    log_path = path_formatter(args, 'train', 'log')
     logging.basicConfig(
         level=logging.INFO, filename=log_path, filemode='w', 
         format='%(asctime)s - %(levelname)s - %(message)s')
@@ -128,11 +128,11 @@ if __name__ == '__main__':
                   validation_data=val_data_generator)
     
     logging.info('Saving Model')
-    model_path = log_path(args, 'model', 'h5')
+    model_path = path_formatter(args, 'model', 'h5')
     model.save(model_path)
     logging.info('Saving History')
     hist = pd.DataFrame(h.history)
-    hist_path = log_path(args, 'history', 'csv')
+    hist_path = path_formatter(args, 'history', 'csv')
     hist.to_csv(hist_path)
     logging.info('Done')
 

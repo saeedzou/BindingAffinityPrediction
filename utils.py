@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def load_csv(path):
     return pd.read_csv(path, index_col=0)
 
-def log_path(args, type, format):
+def path_formatter(args, type, format):
     return (f'./log/{type}_e{args.epochs}_bs{args.batch_size}_lr{args.learning_rate}'
             f'_loss{args.loss}_ed{args.embedding_dim}_ru{args.rnn_units}_sl{args.seq_len}'
             f'_cd{args.context_dim}_vs{args.vocab_size}_fci{args.fc_in_units}_fco{args.fc_out_units}.{format}')
