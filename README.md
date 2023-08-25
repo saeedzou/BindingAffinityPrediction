@@ -1,21 +1,5 @@
 # Binding Affinity Prediction
 
-## Preprocess
-
-```bash
-python Preprocess.py -f [CSV path] -v [validation ratio] -t [test ratio] -tp [train path] -vp [validation path] -tep [test path]
-```
-
-This splits the data into train, validation and test sets. The default validation and test ration is 15%.
-
-## Train
-
-```bash
-python main.py --train [train path] --val [validation path] -e [epochs] -b [batch size] -lr [learning rate] -l [loss function] -ed [embedding dimension] -ru [RNN units] -s [sequence length] -v [vocab size] -fci [inner FC units] -fco [outer FC units] -cd [context dim] -m [model name]
-```
-
-First run preprocesing to generate train, val, test splits.
-
 ## Architecture
 
 I follow a variant of the architecure in [MHCAttnNet](https://github.com/gopuvenkat/MHCAttnNet/tree/master).
@@ -48,9 +32,26 @@ The best model is mhcAttentionAdd. The results are as follows:(On test set with 
 
 | Model | Loss | Accuracy | Precision | Recall | F1 Score | AUC |
 | ----- | ---- | -------- | --------- | ------ | -------- | --- |
-| mhcAttentionAdd | 0.1392 | 94.91 | 88.87 | 85.48 | 87.15 | 97.85 |
+| mhcAttentionAdd | **0.1392** | **94.91** | 88.87 | **85.48** | **87.15** | **97.85** |
 | mhcNoAttention | 0.1531 | 94.25 | 86.74 | 84.39 | 85.54 | 97.47 |
+| mhcAttentionSimple | 0.1442 | 94.65 | 87.75 | 85.36 | 86.54 | 97.73 |
+| mhcAttentionConcat | 0.1422 | 94.78 | **90.25** | 83.09 | 86.52 | 97.81 |
 
+## Preprocess
+
+```bash
+python Preprocess.py -f [CSV path] -v [validation ratio] -t [test ratio] -tp [train path] -vp [validation path] -tep [test path]
+```
+
+This splits the data into train, validation and test sets. The default validation and test ration is 15%.
+
+## Train
+
+```bash
+python main.py --train [train path] --val [validation path] -e [epochs] -b [batch size] -lr [learning rate] -l [loss function] -ed [embedding dimension] -ru [RNN units] -s [sequence length] -v [vocab size] -fci [inner FC units] -fco [outer FC units] -cd [context dim] -m [model name]
+```
+
+First run preprocesing to generate train, val, test splits.
 
 ## Training Plots
 
@@ -65,4 +66,3 @@ The best model is mhcAttentionAdd. The results are as follows:(On test set with 
 | AUC |
 |:-------:|
 | ![AUC](./data/auc.png) |
-
