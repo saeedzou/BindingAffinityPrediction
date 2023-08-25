@@ -53,6 +53,12 @@ python main.py --train [train path] --val [validation path] -e [epochs] -b [batc
 
 First run preprocesing to generate train, val, test splits.
 
+## Test
+
+```bash
+python main.py --test [test path] -b [batch size] -m [model name] -e [epochs] -b [batch size] -lr [learning rate] -l [loss function] -ed [embedding dimension] -ru [RNN units] -s [sequence length] -v [vocab size] -fci [inner FC units] -fco [outer FC units] -cd [context dim] -m [model name]
+```
+
 ## Training Plots
 
 | Loss | Accuracy |
