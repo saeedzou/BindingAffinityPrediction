@@ -1,12 +1,10 @@
 import keras
 from keras.layers import TextVectorization
-import pandas as pd
 import numpy as np
-import logging, argparse, pickle, os
+import argparse, pickle, os
 import tensorflow as tf
-from utils import load_csv, path_formatter, adapt_vectorizer, display_history
+from utils import load_csv, path_formatter
 from dataloader import DataGenerator
-import h5py    
 from models import Attention
 
 # Set the random seed
