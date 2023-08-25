@@ -6,7 +6,7 @@
 python Preprocess.py -f [CSV path] -v [validation ratio] -t [test ratio] -tp [train path] -vp [validation path] -tep [test path]
 ```
 
-This splits the data into train, validation and test sets. The default validation and test ration is 20%.
+This splits the data into train, validation and test sets. The default validation and test ration is 15%.
 
 ## Train
 
@@ -41,3 +41,38 @@ Other models I tried are:
 2. (mhcAttentionCombined) Only the concatenated LSTM outputs are passed through the attention layer.
 3. (mhcAttentionSimple) Only the LSTM outputs are passed through the attention layer.
 4. (mhcNoAttention) No attention layer is used. The LSTM outputs are passed through global average pooling and then through fully connected layers.
+
+## Results
+
+The best model is mhcAttentionAdd. The results are as follows:(On test set with 15% ratio)
+
+| Model | Loss | Accuracy | Precision | Recall | F1 Score | AUC |
+| ----- | ---- | -------- | --------- | ------ | -------- | --- |
+| mhcAttentionAdd | 0.1392 | 94.91 | 88.87 | 85.48 | 87.14 | 97.85 |
+
+## Training Plots
+
+<div style="text-align: center;">
+    <div style="display: flex;">
+        <div style="flex: 1;">
+            <img src="./data/loss.png" alt="Loss">
+            <p>Loss</p>
+        </div>
+        <div style="flex: 1;">
+            <img src="./data/accuracy.png" alt="Accuracy">
+            <p>Accuracy</p>
+        </div>
+        <div style="flex: 1;">
+            <img src="./data/precision.png" alt="Precision">
+            <p>Precision</p>
+        </div>
+        <div style="flex: 1;">
+            <img src="./data/recall.png" alt="Recall">
+            <p>Recall</p>
+        </div>
+        <div style="flex: 1;">
+            <img src="./data/auc.png" alt="AUC">
+            <p>AUC</p>
+        </div>
+    </div>
+</div>
