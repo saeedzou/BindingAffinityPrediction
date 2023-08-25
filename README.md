@@ -54,7 +54,15 @@ The best model is mhcAttentionAdd. The results are as follows:(On test set with 
 
 ## Training Plots
 
-| Loss | Accuracy | Precision | Recall | AUC |
-|:-------:|:-------:|:-------:|:-------:|:-------:|
-| ![Loss](./data/loss.png) | ![Accuracy](./data/accuracy.png) | ![Precision](./data/precision.png) | ![Recall](./data/recall.png) | ![AUC](./data/auc.png) |
+| Loss | Accuracy |
+|:-------:|:-------:|
+| ![Loss](./data/loss.png) | ![Accuracy](./data/accuracy.png) |
+
+| Precision | Recall |
+|:-------:|:-------:|
+| ![Precision](./data/precision.png) | ![Recall](./data/recall.png) |
+
+| AUC |
+|:-------:|
+| ![AUC](./data/auc.png) |
 
