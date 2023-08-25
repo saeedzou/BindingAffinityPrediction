@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     logging.info('Model Summary')
     model.build(input_shape=[(None, 1), (None, 1)])
-    keras.utils.plot_model(model, to_file=f'./data/{args.model}.png', show_shapes=True, dpi=512)
+    keras.utils.plot_model(model, to_file=f'./data/{args.model}.png', show_shapes=True, dpi=200)
     summary_buffer = []
     model.summary(print_fn=lambda x: summary_buffer.append(x))
     logging.info('\n'.join(summary_buffer))
