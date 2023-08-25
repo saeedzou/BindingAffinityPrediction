@@ -128,7 +128,7 @@ if __name__ == '__main__':
                   validation_data=val_data_generator)
     
     logging.info('Saving Model')
-    model_path = path_formatter(args, 'model', 'h5')
+    model_path = path_formatter(args, f'{args.model}', 'h5')
     model.save(model_path)
     logging.info('Saving History')
     hist = pd.DataFrame(h.history)
