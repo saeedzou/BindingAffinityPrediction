@@ -139,13 +139,4 @@ if __name__ == '__main__':
     logging.info('Plotting History')
     display_history(hist)
 
-    logging.info('Evaluating Model')
-    # evaluate on training data
-    logging.info('On Training Data:')
-    model.evaluate(train_data_generator)
-    # evaluate on validation data
-    logging.info('On Validation Data:')
-    model.evaluate(val_data_generator)
-    
-    logging.info('Done')
     logging.info('Logging Ended')
